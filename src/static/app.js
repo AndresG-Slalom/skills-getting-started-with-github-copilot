@@ -12,6 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Clear loading message
       activitiesList.innerHTML = "";
+      activitySelect.innerHTML = '<option value="">-- Select an activity --</option>';
 
       // Populate activities list
       Object.entries(activities).forEach(([name, details]) => {
@@ -19,15 +20,52 @@ document.addEventListener("DOMContentLoaded", () => {
         activityCard.className = "activity-card";
 
         const spotsLeft = details.max_participants - details.participants.length;
+        const participantsList = details.participants.length
+          ? `<ul>${details.participants
+              .map(
+                (email) => `
+                  <li>
+                    <span>${email}</span>
+                    <button class="remove-participant" type="button" data-activity="${encodeURIComponent(name)}" data-email="${encodeURIComponent(email)}" aria-label="Remove ${email} from ${name}">x</button>
+                  </li>`
+              )
+              .join("")}</ul>`
+          : "<p class=\"no-participants\">No participants yet</p>";
 
         activityCard.innerHTML = `
           <h4>${name}</h4>
           <p>${details.description}</p>
           <p><strong>Schedule:</strong> ${details.schedule}</p>
           <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
+          <div class="participants">
+            <strong>Participants</strong>
+            ${participantsList}
+          </div>
         `;
 
         activitiesList.appendChild(activityCard);
+
+        activityCard.querySelectorAll(".remove-participant").forEach((button) => {
+          button.addEventListener("click", async () => {
+            const activityName = decodeURIComponent(button.dataset.activity);
+            const email = decodeURIComponent(button.dataset.email);
+
+            try {
+              const response = await fetch(
+                `/activities/${encodeURIComponent(activityName)}/participants/${encodeURIComponent(email)}`,
+                { method: "DELETE" }
+              );
+
+              if (!response.ok) {
+                throw new Error("Failed to remove participant");
+              }
+
+              fetchActivities();
+            } catch (error) {
+              console.error("Error removing participant:", error);
+            }
+          });
+        });
 
         // Add option to select dropdown
         const option = document.createElement("option");
